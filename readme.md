@@ -54,7 +54,7 @@ Open the config/nginx.conf again and delete everything. Paste below contents and
 server {
     listen 80;
     listen [::]:80;
-    server_name test.leangaurav.dev;
+    server_name your-domain.com;
     location / {
         return 301 https://$host$request_uri;
     }
@@ -66,9 +66,9 @@ server {
 server {
     listen 443 ssl;
     listen [::]:443 ssl http2;
-    server_name test.leangaurav.dev;
-    ssl_certificate /etc/letsencrypt/live/test.leangaurav.dev/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/test.leangaurav.dev/privkey.pem;
+    server_name your-domain.com;
+    ssl_certificate /etc/letsencrypt/live/your-domain.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/your-domain.com/privkey.pem;
 }
 ```
 
@@ -79,3 +79,39 @@ docker compose up --build -d nginx
 ```
 
 Now navigate to your domain and you should find an nginx 404 page served over https.
+
+## Reverse Proxy (Optional)
+
+All these things can be customized according to your needs. What I have provided is just an example.
+
+```nginx
+server {
+    listen 80;
+    listen [::]:80;
+    server_name your-domain.com;
+    location / {
+        return 301 https://$host$request_uri;
+    }
+    location ~ /.well-known/acme-challenge {
+        allow all;
+        root /tmp/acme_challenge;
+    }
+}
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl http2;
+    server_name your-domain.com;
+    ssl_certificate /etc/letsencrypt/live/your-domain.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/your-domain.com/privkey.pem;
+
+
+        location / {
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header Host $host;
+                proxy_set_header X-NginX-Proxy true;
+                proxy_pass http://your-ip;
+                proxy_redirect http://your-ip https://$server_name;
+        }
+}
+```
